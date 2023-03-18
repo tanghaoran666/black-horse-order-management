@@ -1,16 +1,22 @@
 package com.example.ordermanagement.service;
 
 import com.example.ordermanagement.client.MerchantManagementClient;
+import com.example.ordermanagement.client.RedEnvelopeManagementClient;
 import com.example.ordermanagement.domainModel.OrderMealModel;
 import com.example.ordermanagement.domainModel.OrderModel;
+import com.example.ordermanagement.domainModel.RedEnvelopeDeductionModel;
 import com.example.ordermanagement.dto.MealDetailDto;
 import com.example.ordermanagement.entity.Order;
+import com.example.ordermanagement.entity.RedEnvelopeDeduction;
+import com.example.ordermanagement.enums.DeductionStatus;
 import com.example.ordermanagement.exception.NotFoundException;
 import com.example.ordermanagement.exception.ServerUnavailableException;
 import com.example.ordermanagement.repository.OrderRepository;
+import com.example.ordermanagement.repository.RedEnvelopeDeductionRepository;
 import com.rabbitmq.http.client.HttpException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,10 +24,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,6 +42,10 @@ public class OrderServiceTest {
     private OrderRepository orderRepository;
     @Mock
     private MerchantManagementClient merchantManagementClient;
+    @Mock
+    private RedEnvelopeManagementClient redEnvelopeManagementClient;
+    @Mock
+    private RedEnvelopeDeductionRepository redEnvelopeDeductionRepository;
 
     @Test
     void should_create_order_success() {
@@ -76,6 +90,34 @@ public class OrderServiceTest {
                 .build();
 
         assertThrows(ServerUnavailableException.class, () -> orderService.createOrder(orderModel));
+    }
+
+    @Test
+    void should_deduction_red_envelope_success_when_red_envelope_server_unavailable() {
+        String failReason = "503 red envelope management server unavailable";
+        Order order = Order.builder().id("o1").totalPrice(BigDecimal.valueOf(15)).build();
+        when(orderRepository.findById(any())).thenReturn(Optional.ofNullable(order));
+        when(redEnvelopeManagementClient.deduction(any())).thenThrow(
+                new HttpException(failReason));
+
+        RedEnvelopeDeductionModel redEnvelopeDeductionModel = RedEnvelopeDeductionModel.builder()
+                .redEnvelopeId("r1").deductionAmount(BigDecimal.TEN).build();
+        orderService.redEnvelopeDeduction("o1", redEnvelopeDeductionModel);
+
+        ArgumentCaptor<RedEnvelopeDeduction> recordCapture = ArgumentCaptor.forClass(RedEnvelopeDeduction.class);
+        verify(redEnvelopeDeductionRepository, times(1))
+                .save(recordCapture.capture());
+        RedEnvelopeDeduction savedDedEnvelopeDeduction = recordCapture.getValue();
+        assertEquals(DeductionStatus.FAIL, savedDedEnvelopeDeduction.getStatus());
+        assertEquals(failReason, savedDedEnvelopeDeduction.getFailReason());
+        assertEquals("r1", savedDedEnvelopeDeduction.getRedEnvelopeId());
+
+        ArgumentCaptor<Order> orderArgumentCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository, times(1))
+                .save(orderArgumentCaptor.capture());
+        Order updatedOrder = orderArgumentCaptor.getValue();
+        assertEquals(BigDecimal.valueOf(5), updatedOrder.getTotalPrice());
+
     }
 
 }
