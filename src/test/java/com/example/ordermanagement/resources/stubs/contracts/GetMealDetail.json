@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/meals"
+  },
+  "response": {
+    "status": 200,
+    "body": "[{\"code\": \"A01\",\"price\": 5.00,\"price\":2}]",
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

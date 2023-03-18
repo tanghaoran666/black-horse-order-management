@@ -9,6 +9,6 @@ import java.util.List;
 
 @FeignClient(name = "merchant-management", url = "http://localhost:8082")
 public interface MerchantManagementClient {
-    @GetMapping
+    @GetMapping("/meals")
     List<MealDetailDto> getMealDetail(@RequestParam(value = "meal_ids")List<String> mealIds);
 }
