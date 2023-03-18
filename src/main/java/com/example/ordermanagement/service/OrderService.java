@@ -6,8 +6,10 @@ import com.example.ordermanagement.dto.MealDetailDto;
 import com.example.ordermanagement.entity.Order;
 import com.example.ordermanagement.entity.OrderMeal;
 import com.example.ordermanagement.exception.NotFoundException;
+import com.example.ordermanagement.exception.ServerUnavailableException;
 import com.example.ordermanagement.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,6 +20,7 @@ import static com.example.ordermanagement.mapper.OrderMapper.ORDER_MAPPER;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
     private final OrderRepository orderRepository;
     private final MerchantManagementClient merchantManagementClient;
@@ -26,8 +29,13 @@ public class OrderService {
     public String createOrder(OrderModel orderModel) {
         Order order = ORDER_MAPPER.toOrder(orderModel);
         List<String> mealIds = order.getMeals().stream().map(OrderMeal::getMealId).collect(Collectors.toList());
-
-        List<MealDetailDto> availableMealDetails = merchantManagementClient.getMealDetail(mealIds);
+        List<MealDetailDto> availableMealDetails;
+        try {
+            availableMealDetails = merchantManagementClient.getMealDetail(mealIds);
+        } catch (RuntimeException exception) {
+            log.error("merchant management server unavailable", exception);
+            throw new ServerUnavailableException();
+        }
         validateMealMatch(mealIds, availableMealDetails);
 
         order.setTotalPrice(getTotalPrice(availableMealDetails));
@@ -38,10 +46,12 @@ public class OrderService {
     private static void validateMealMatch(List<String> mealIds, List<MealDetailDto> availableMealDetails) {
         List<String> availableMealIds = availableMealDetails.stream()
                 .map(MealDetailDto::getMealId).collect(Collectors.toList());
-        boolean anyFoodNotFound = mealIds.stream().anyMatch(mealId -> !availableMealIds.contains(mealId));
-        if (anyFoodNotFound) {
-            throw new NotFoundException();
-        }
+        mealIds.forEach(mealId -> {
+            if (!availableMealIds.contains(mealId)) {
+                log.debug(String.format("meal not found,mealId:%s", mealId));
+                throw new NotFoundException();
+            }
+        });
     }
 
     private static BigDecimal getTotalPrice(List<MealDetailDto> mealDetails) {
