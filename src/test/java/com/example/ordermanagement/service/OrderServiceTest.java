@@ -5,6 +5,7 @@ import com.example.ordermanagement.domainModel.OrderMealModel;
 import com.example.ordermanagement.domainModel.OrderModel;
 import com.example.ordermanagement.dto.MealDetailDto;
 import com.example.ordermanagement.entity.Order;
+import com.example.ordermanagement.exception.NotFoundException;
 import com.example.ordermanagement.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,9 +14,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -31,17 +34,32 @@ public class OrderServiceTest {
     @Test
     void should_create_order_success() {
         when(merchantManagementClient.getMealDetail(any())).thenReturn(
-                Collections.singletonList(MealDetailDto.builder().mealId(1L)
+                Collections.singletonList(MealDetailDto.builder().mealId("m1")
                         .price(BigDecimal.TEN).build()));
         when(orderRepository.save(any())).thenReturn(Order.builder().id("o1").build());
 
         OrderModel orderBO = OrderModel.builder()
                 .meals(Collections.singletonList(
-                        OrderMealModel.builder().mealId("1L").quantity(1).build()))
+                        OrderMealModel.builder().mealId("m1").quantity(1).build()))
                 .build();
 
         String orderId = orderService.createOrder(orderBO);
         assertNotNull(orderId);
+    }
+
+    @Test
+    void should_throw_not_found_exception_when_user_choos_no_exist_food() {
+        when(merchantManagementClient.getMealDetail(any())).thenReturn(
+                Collections.singletonList(MealDetailDto.builder().mealId("m1")
+                        .price(BigDecimal.TEN).build()));
+
+        OrderModel orderModel = OrderModel.builder()
+                .meals(Arrays.asList(
+                        OrderMealModel.builder().mealId("m1").quantity(1).build(),
+                        OrderMealModel.builder().mealId("m2").quantity(1).build()))
+                .build();
+
+        assertThrows(NotFoundException.class, () -> orderService.createOrder(orderModel));
     }
 
 

@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MealDetailDto {
-    private Long mealId;
+    private String mealId;
     private BigDecimal price;
     private int quantity;
 }

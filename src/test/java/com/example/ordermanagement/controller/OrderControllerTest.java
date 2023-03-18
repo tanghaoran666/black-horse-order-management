@@ -64,7 +64,7 @@ public class OrderControllerTest {
                 .meals(Collections.singletonList(OrderMealDto.builder().mealId("m2").quantity(2).build()))
                 .build();
 
-        when(orderService.createOrder(any())).thenThrow(new NotFoundException(ErrorCode.MEAL_NOT_FOUND, "meal not found,mealId: m1"));
+        when(orderService.createOrder(any())).thenThrow(new NotFoundException(ErrorCode.MEAL_NOT_FOUND));
 
         mockMvc.perform(
                         post("/orders")
