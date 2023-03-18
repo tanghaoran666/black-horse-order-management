@@ -81,6 +81,23 @@ public class OrderService {
         BigDecimal newTotalPrice = order.getTotalPrice().subtract(redEnvelopeDeductionModel.getDeductionAmount());
         order.setTotalPrice(newTotalPrice);
         orderRepository.save(order);
+    }
 
+    public void retryFailRedEnvelopeDeduction() {
+        List<RedEnvelopeDeduction> retryFailRedEnvelopeDeductions = redEnvelopeDeductionRepository.findRetryRedEnvelopeDeduction();
+        if (retryFailRedEnvelopeDeductions.isEmpty()) {
+            return;
+        }
+        retryFailRedEnvelopeDeductions.forEach(redEnvelopeDeduction -> {
+            try {
+                redEnvelopeManagementClient.deduction(redEnvelopeDeduction.getRedEnvelopeId());
+                redEnvelopeDeduction.setStatus(DeductionStatus.SUCCESS);
+            } catch (RuntimeException exception) {
+                redEnvelopeDeduction.setFailReason(exception.getMessage());
+                int retryTimes = redEnvelopeDeduction.getRetryTimes();
+                redEnvelopeDeduction.setRetryTimes(retryTimes + 1);
+            }
+            redEnvelopeDeductionRepository.save(redEnvelopeDeduction);
+        });
     }
 }

@@ -117,7 +117,24 @@ public class OrderServiceTest {
                 .save(orderArgumentCaptor.capture());
         Order updatedOrder = orderArgumentCaptor.getValue();
         assertEquals(BigDecimal.valueOf(5), updatedOrder.getTotalPrice());
+    }
 
+    @Test
+    void should_eduction_success_when_retry_fail_red_envelope_deduction() {
+        RedEnvelopeDeduction redEnvelopeDeduction = RedEnvelopeDeduction.builder().redEnvelopeId("r1")
+                .status(DeductionStatus.FAIL).build();
+        when(redEnvelopeDeductionRepository.findRetryRedEnvelopeDeduction())
+                .thenReturn(Collections.singletonList(redEnvelopeDeduction));
+        when(redEnvelopeManagementClient.deduction(any())).thenReturn(BigDecimal.TEN);
+
+        orderService.retryFailRedEnvelopeDeduction();
+
+        ArgumentCaptor<RedEnvelopeDeduction> recordCapture = ArgumentCaptor.forClass(RedEnvelopeDeduction.class);
+        verify(redEnvelopeDeductionRepository, times(1))
+                .save(recordCapture.capture());
+        RedEnvelopeDeduction savedDedEnvelopeDeduction = recordCapture.getValue();
+        assertEquals(DeductionStatus.SUCCESS, savedDedEnvelopeDeduction.getStatus());
+        assertEquals("r1", savedDedEnvelopeDeduction.getRedEnvelopeId());
     }
 
 }
