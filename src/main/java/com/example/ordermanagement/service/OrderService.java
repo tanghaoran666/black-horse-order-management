@@ -5,7 +5,6 @@ import com.example.ordermanagement.domainModel.OrderModel;
 import com.example.ordermanagement.dto.MealDetailDto;
 import com.example.ordermanagement.entity.Order;
 import com.example.ordermanagement.entity.OrderMeal;
-import com.example.ordermanagement.enums.ErrorCode;
 import com.example.ordermanagement.exception.NotFoundException;
 import com.example.ordermanagement.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +40,7 @@ public class OrderService {
                 .map(MealDetailDto::getMealId).collect(Collectors.toList());
         boolean anyFoodNotFound = mealIds.stream().anyMatch(mealId -> !availableMealIds.contains(mealId));
         if (anyFoodNotFound) {
-            throw new NotFoundException(ErrorCode.MEAL_NOT_FOUND);
+            throw new NotFoundException();
         }
     }
 

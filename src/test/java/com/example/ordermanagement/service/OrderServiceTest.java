@@ -62,5 +62,20 @@ public class OrderServiceTest {
         assertThrows(NotFoundException.class, () -> orderService.createOrder(orderModel));
     }
 
+    @Test
+    void should_throw_server_unavailable_exception_when_user_choos_no_exist_food() {
+        when(merchantManagementClient.getMealDetail(any())).thenReturn(
+                Collections.singletonList(MealDetailDto.builder().mealId("m1")
+                        .price(BigDecimal.TEN).build()));
+
+        OrderModel orderModel = OrderModel.builder()
+                .meals(Arrays.asList(
+                        OrderMealModel.builder().mealId("m1").quantity(1).build(),
+                        OrderMealModel.builder().mealId("m2").quantity(1).build()))
+                .build();
+
+        assertThrows(NotFoundException.class, () -> orderService.createOrder(orderModel));
+    }
+
 
 }

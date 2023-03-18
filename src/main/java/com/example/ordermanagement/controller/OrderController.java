@@ -5,6 +5,7 @@ import com.example.ordermanagement.dto.OrderCreateRequest;
 import com.example.ordermanagement.dto.OrderCreateResponse;
 import com.example.ordermanagement.enums.ErrorCode;
 import com.example.ordermanagement.exception.NotFoundException;
+import com.example.ordermanagement.exception.ServerUnavailableException;
 import com.example.ordermanagement.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +34,9 @@ public class OrderController {
         } catch (NotFoundException e) {
             ErrorCode errorCode = e.getErrorCode();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResult(errorCode.name(), errorCode.getMessage()));
-
+        } catch (ServerUnavailableException e) {
+            ErrorCode errorCode = e.getErrorCode();
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ErrorResult(errorCode.name(), errorCode.getMessage()));
         }
     }
 

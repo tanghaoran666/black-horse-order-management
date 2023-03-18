@@ -4,6 +4,7 @@ import com.example.ordermanagement.dto.OrderCreateRequest;
 import com.example.ordermanagement.dto.OrderMealDto;
 import com.example.ordermanagement.enums.ErrorCode;
 import com.example.ordermanagement.exception.NotFoundException;
+import com.example.ordermanagement.exception.ServerUnavailableException;
 import com.example.ordermanagement.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,12 +60,12 @@ public class OrderControllerTest {
     }
 
     @Test
-    void should_retunr_error_result_when_meal_not_found() throws Exception {
+    void should_return_not_found_error_result_when_meal_not_found() throws Exception {
         OrderCreateRequest createRequest = OrderCreateRequest.builder()
                 .meals(Collections.singletonList(OrderMealDto.builder().mealId("m2").quantity(2).build()))
                 .build();
 
-        when(orderService.createOrder(any())).thenThrow(new NotFoundException(ErrorCode.MEAL_NOT_FOUND));
+        when(orderService.createOrder(any())).thenThrow(new NotFoundException());
 
         mockMvc.perform(
                         post("/orders")
@@ -74,5 +75,23 @@ public class OrderControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ErrorCode.MEAL_NOT_FOUND.name()))
                 .andExpect(jsonPath("$.message").value(ErrorCode.MEAL_NOT_FOUND.getMessage()));
+    }
+
+    @Test
+    void should_return_server_unavailable_error_result_when_server_unavailable() throws Exception {
+        OrderCreateRequest createRequest = OrderCreateRequest.builder()
+                .meals(Collections.singletonList(OrderMealDto.builder().mealId("m2").quantity(2).build()))
+                .build();
+
+        when(orderService.createOrder(any())).thenThrow(new ServerUnavailableException());
+
+        mockMvc.perform(
+                        post("/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(createRequest))
+                )
+                .andExpect(status().is5xxServerError())
+                .andExpect(jsonPath("$.code").value(ErrorCode.SERVER_UNAVAILABLE.name()))
+                .andExpect(jsonPath("$.message").value(ErrorCode.SERVER_UNAVAILABLE.getMessage()));
     }
 }
